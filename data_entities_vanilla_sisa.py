@@ -144,11 +144,11 @@ class alice(object):
         unlearn_data = [(inputs, labels) for batch in self.train_dataloader for inputs, labels in zip(*batch) if labels != omit_label]
 
         # Convert unlearn_data to a DataLoader
-        unlearn_dataloader = torch.utils.data.DataLoader(unlearn_data, batch_size=16)    
-        self.logger.info("Retraining dataset: {}".format(dict(Counter(label.item() for data in unlearn_dataloader for label in data[1]))))
+        self.unlearn_dataloader = torch.utils.data.DataLoader(unlearn_data, batch_size=16)    
+        self.logger.info("Retraining dataset: {}".format(dict(Counter(label.item() for data in self.unlearn_dataloader for label in data[1]))))
 
         for epoch in tqdm(range(self.local_epochs), desc="Epochs", ascii=" >="):
-            for i, data in enumerate(tqdm(unlearn_dataloader, desc="Batches", ascii=" >=")):
+            for i, data in enumerate(tqdm(self.unlearn_dataloader, desc="Batches", ascii=" >=")):
                 inputs,labels = data
                 self.optimizer.zero_grad()
 
@@ -184,11 +184,13 @@ class alice(object):
 
         self.logger.info("Alice is going insane!")
 
-    def give_activation_and_labels(self):
+    def give_activation_and_labels(self, unlearned=False):
         activations = []
         labels_list = []
-        for i, data in enumerate(self.train_dataloader):
-            inputs,labels = data
+        dataloader = self.train_dataloader if not unlearned else self.unlearn_dataloader
+
+        for i, data in enumerate(dataloader):
+            inputs, labels = data
             # Detach the output tensor from the computational graph. By detaching, we're saying
             # we no longer need to compute gradients with respect to these tensors during backward 
             # pass because they're not learnable parameters (freezing weights) of our current model
@@ -222,11 +224,11 @@ class alice(object):
         filtered_data = [(inputs, labels) for batch in self.train_dataloader for inputs, labels in zip(*batch) if labels != omit_label]
 
         # Convert filtered_data to a DataLoader
-        filtered_dataloader = torch.utils.data.DataLoader(filtered_data, batch_size=16)    
-        self.logger.info("Filtered dataset: {}".format(dict(Counter(label.item() for data in filtered_dataloader for label in data[1]))))
+        self.unlearn_dataloader = torch.utils.data.DataLoader(filtered_data, batch_size=16)    
+        self.logger.info("Filtered dataset: {}".format(dict(Counter(label.item() for data in self.unlearn_dataloader for label in data[1]))))
         
         for epoch in tqdm(range(self.local_epochs), desc="Epochs", ascii=" >="):
-            for i, data in enumerate(tqdm(self.train_dataloader, desc="Batches", ascii=" >=")):
+            for i, data in enumerate(tqdm(self.unlearn_dataloader, desc="Batches", ascii=" >=")):
                 inputs,labels = data
                 self.optimizer.zero_grad()
 
@@ -256,12 +258,15 @@ class bob(object):
         # self.optimizer = torch.optim.SGD(self.model.parameters(), lr=args.lr, weight_decay=1e-5, momentum = 0.9)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=1e-5)
 
-    def train_and_backward(self):
+    def train_and_backward(self, unlearn_request_from_alices):
         self.logger.info("Global Training")
 
         for epoch in tqdm(range(self.server_epochs), desc="Epochs", ascii=" >="):
-            for client_id in range(1, self.client_num_in_total + 1):
-                intermediate_inputs, labels = self.alices[client_id].rpc_sync().give_activation_and_labels()
+            for client_id in range(1, self.client_num_in_total + 1):                
+                intermediate_inputs, labels = self.alices[client_id].rpc_sync().give_activation_and_labels(unlearned=True) \
+                                                if client_id in unlearn_request_from_alices else \
+                                                self.alices[client_id].rpc_sync().give_activation_and_labels(unlearned=False)
+
                 for intermediate_input, label in tqdm(zip(intermediate_inputs, labels), total=len(intermediate_inputs), desc="Batches", ascii=True, mininterval=0.1):
                     self.optimizer.zero_grad()
                     # Detach activation from Alice's computation graph

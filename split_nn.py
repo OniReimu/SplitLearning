@@ -42,13 +42,13 @@ def example(rank,world_size,args):
 
                 for iter in range(args.iterations):
                     print("Training server")
-                    BOB.train_and_backward()
+                    BOB.train_and_backward([])
                     BOB.eval_request()
 
                 #-------------------Unlearn----------------------#
 
                 unlearn_request_from_alices = [1]
-                omitted_label = 0
+                omitted_label = 9
 
                 BOB.unfreeze_alice_weights(unlearn_request_from_alices)
 
@@ -60,7 +60,7 @@ def example(rank,world_size,args):
 
                 for iter in range(args.iterations):
                     print("Retraining server upon the omitted labels")
-                    BOB.train_and_backward()
+                    BOB.train_and_backward(unlearn_request_from_alices)
                     # BOB.eval_request()
                     BOB.eval_request_breakdown(omitted_label)
 
@@ -81,7 +81,7 @@ def example(rank,world_size,args):
 
             for iter in range(args.iterations):
                 print("(Control group) Training server")
-                BOB.train_and_backward()
+                BOB.train_and_backward(unlearn_request_from_alices)
                 BOB.eval_request()            
             
             #-------------------------------------------------#
