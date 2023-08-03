@@ -1,0 +1,26 @@
+2023-08-03 16:27:14,098: Bob Started Getting Tipsy
+2023-08-03 16:27:14,098: Train Request for Alice-1
+2023-08-03 16:27:23,256: Train Request for Alice-2
+2023-08-03 16:27:33,575: Train Request for Alice-1
+2023-08-03 16:27:42,812: Train Request for Alice-2
+2023-08-03 16:27:53,245: Train Request for Alice-1
+2023-08-03 16:28:02,392: Train Request for Alice-2
+2023-08-03 16:28:12,859: Train Request for Alice-1
+2023-08-03 16:28:22,078: Train Request for Alice-2
+2023-08-03 16:28:31,898: Train Request for Alice-1
+2023-08-03 16:28:40,982: Train Request for Alice-2
+2023-08-03 16:28:51,499: Server training starts. Freezing weights for Alices-1.
+2023-08-03 16:28:51,500: Server training starts. Freezing weights for Alices-2.
+2023-08-03 16:28:51,500: Global Training
+2023-08-03 16:58:52,712: Global training completed.
+2023-08-03 16:58:52,741: Initializing Evaluation of all Alices
+2023-08-03 16:58:57,891: Accuracy over all data: 0.672
+2023-08-03 16:58:57,891: Global Training
+2023-08-03 17:29:27,943: Global training completed.
+2023-08-03 17:29:27,972: Initializing Evaluation of all Alices
+2023-08-03 17:29:33,289: Accuracy over all data: 0.692
+2023-08-03 17:29:33,289: Global Training
+2023-08-03 18:01:22,037: Global training completed.
+2023-08-03 18:01:22,060: Initializing Evaluation of all Alices
+2023-08-03 18:01:27,531: Accuracy over all data: 0.702
+2023-08-03 18:01:27,531: Global Training

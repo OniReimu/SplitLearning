@@ -26,7 +26,7 @@ def load_mnist_flat(args):
 def load_mnist_image(args):
     dataset = fetch_openml("mnist_784")
 
-    data = dataset.data.reshape(-1, 1, 28, 28)
+    data = dataset.data.values.reshape(-1, 1, 28, 28)
     label_list = dataset.target.astype(int).tolist()
 
     args.class_num = len(np.unique(label_list))

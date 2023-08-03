@@ -15,6 +15,8 @@ import os
 from collections import Counter
 from copy import deepcopy
 
+from tqdm import tqdm
+
 class alice(object):
     def __init__(self,server,bob_model_rrefs,rank,args):
         self.client_id = rank
@@ -28,11 +30,17 @@ class alice(object):
 
         self.criterion = nn.CrossEntropyLoss()
 
+        # self.dist_optimizer=  DistributedOptimizer(
+        #             torch.optim.SGD,
+        #             list(map(lambda x: RRef(x),self.model2.parameters())) +  bob_model_rrefs +  list(map(lambda x: RRef(x),self.model1.parameters())),
+        #             lr=args.lr,
+        #             momentum = 0.9
+        #         )
+
         self.dist_optimizer=  DistributedOptimizer(
-                    torch.optim.SGD,
+                    torch.optim.Adam,
                     list(map(lambda x: RRef(x),self.model2.parameters())) +  bob_model_rrefs +  list(map(lambda x: RRef(x),self.model1.parameters())),
                     lr=args.lr,
-                    momentum = 0.9
                 )
 
         self.load_data(args)
@@ -42,17 +50,17 @@ class alice(object):
         self.logger.info("Training")
 
         if last_alice_rref is None:
-            self.logger.info(f"Alice{self.client_id} is first client to train")
+            self.logger.info(f"Alice-{self.client_id} is first client to train")
 
         else:
-            self.logger.info(f"Alice{self.client_id} receiving weights from Alice{last_alice_id}")
+            self.logger.info(f"Alice-{self.client_id} receiving weights from Alice-{last_alice_id}")
             model1_weights,model2_weights = last_alice_rref.rpc_sync().give_weights()
             self.model1.load_state_dict(model1_weights)
             self.model2.load_state_dict(model2_weights)
 
 
-        for epoch in range(self.epochs):
-            for i,data in enumerate(self.train_dataloader):
+        for epoch in tqdm(range(self.epochs), desc="Epochs", ascii=" >="):
+            for i,data in enumerate(tqdm(self.train_dataloader, desc="Batches", ascii=" >=")):
                 inputs,labels = data
 
                 with dist_autograd.context() as context_id:
@@ -88,7 +96,7 @@ class alice(object):
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-        self.logger.info(f"Alice{self.client_id} Evaluating Data: {round(correct / total, 3)}")
+        self.logger.info(f"Alice-{self.client_id} Evaluating Data: {round(correct / total, 3)}")
         return correct, total
 
     def load_data(self,args):
@@ -98,7 +106,8 @@ class alice(object):
         self.n_train = len(self.train_dataloader.dataset)
         self.logger.info("Local Data Statistics:")
         self.logger.info("Dataset Size: {:.2f}".format(self.n_train))
-        self.logger.info(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist())))
+        self.logger.info("Training dataset: {}".format(dict(Counter(self.train_dataloader.dataset[:][1].numpy().tolist()))))
+        self.logger.info("Test dataset: {}".format(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist()))))
 
     def start_logger(self):
         self.logger = logging.getLogger(f"alice{self.client_id}")
@@ -130,7 +139,7 @@ class bob(object):
 
     def train_request(self,client_id):
         # call the train request from alice
-        self.logger.info(f"Train Request for Alice{client_id}")
+        self.logger.info(f"Train Request for Alice-{client_id}")
         if self.last_alice_id is None:
             self.alices[client_id].rpc_sync(timeout=0).train(None,None)
         else:
