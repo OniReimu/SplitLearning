@@ -24,6 +24,9 @@ def example(rank,world_size,args):
         rpc.init_rpc("bob", rank=rank, world_size=world_size)
 
         BOB = bob(args)
+    
+        unlearn_request_from_alices = [1]
+        omitted_label = 9
 
         if not args.control:
             if not args.sisa:
@@ -43,25 +46,22 @@ def example(rank,world_size,args):
                 for iter in range(args.iterations):
                     print("Training server")
                     BOB.train_and_backward([])
-                    BOB.eval_request()
+                    # BOB.eval_request()
+                    BOB.eval_request_breakdown(omitted_label)
 
                 #-------------------Unlearn----------------------#
-
-                unlearn_request_from_alices = [1]
-                omitted_label = 9
 
                 BOB.unfreeze_alice_weights(unlearn_request_from_alices)
 
                 for iter in range(args.iterations):
                     print(f"Retraining client {unlearn_request_from_alices}")
-                    BOB.unlearn_request(client_id=1, omit_label=omitted_label)
+                    BOB.unlearn_request(client_id=unlearn_request_from_alices[0], omit_label=omitted_label)
 
                 BOB.freeze_alice_weights(unlearn_request_from_alices)
 
                 for iter in range(args.iterations):
                     print("Retraining server upon the omitted labels")
                     BOB.train_and_backward(unlearn_request_from_alices)
-                    # BOB.eval_request()
                     BOB.eval_request_breakdown(omitted_label)
 
                 #-------------------------------------------------#

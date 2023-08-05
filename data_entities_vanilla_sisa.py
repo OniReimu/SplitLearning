@@ -126,7 +126,9 @@ class alice(object):
                 correct_remaining += (predicted[is_remaining] == labels[is_remaining]).sum().item()
 
         self.logger.info(f"Alice-{self.client_id} Evaluating Data: {round(correct / total, 3)}")
-        self.logger.info(f"Alice-{self.client_id} Evaluating Unlearned label-{omit_label}: {round(correct_unlearned / total_unlearned if total_unlearned else 0, 3)}")
+        
+        # "0" indicates there is no such a label in the local testing dataset
+        self.logger.info(f"Alice-{self.client_id} Evaluating Unlearned label-{omit_label}: {round(correct_unlearned / total_unlearned if total_unlearned else 0, 3)} \n correct_unlearned: {correct_unlearned}, total_unlearned: {total_unlearned}")
         self.logger.info(f"Alice-{self.client_id} Evaluating Remaining labels: {round(correct_remaining / total_remaining if total_remaining else 0, 3)}")
 
         return correct, total, correct_unlearned, total_unlearned, correct_remaining, total_remaining     
@@ -146,7 +148,8 @@ class alice(object):
         # Convert unlearn_data to a DataLoader
         self.unlearn_dataloader = torch.utils.data.DataLoader(unlearn_data, batch_size=16)    
         self.logger.info("Retraining dataset: {}".format(dict(Counter(label.item() for data in self.unlearn_dataloader for label in data[1]))))
-
+        self.logger.info("Test dataset (retraining): {}".format(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist()))))
+        
         for epoch in tqdm(range(self.local_epochs), desc="Epochs", ascii=" >="):
             for i, data in enumerate(tqdm(self.unlearn_dataloader, desc="Batches", ascii=" >=")):
                 inputs,labels = data
@@ -325,7 +328,7 @@ class bob(object):
 
         for check in check_eval:
             corr, tot, corr_unlearned, tot_unlearned, corr_remaining, tot_remaining = check.wait()
-            total.append(tot)
+            total.append(tot) # The server now has all the labels collected from all clients
             total_unlearned.append(tot_unlearned)
             total_remaining.append(tot_remaining)
             num_corr.append(corr)

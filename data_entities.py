@@ -154,7 +154,7 @@ class bob(object):
                       range(1, self.client_num_in_total + 1)]
         for check in check_eval:
             corr, tot = check.wait()
-            total.append(tot)
+            total.append(tot) # The server now has all the labels collected from all clients
             num_corr.append(corr)
 
         self.logger.info("Accuracy over all data: {:.3f}".format(sum(num_corr) / sum(total)))

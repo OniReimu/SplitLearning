@@ -54,9 +54,9 @@ Following the unlearning procedure, Bob's model may exhibit a reduced level of a
 ## Example run:
 ```python split_nn.py --epochs=2 --iterations=2 --world_size=5```
 
-```python split_nn.py --epochs=2 --iterations=2 --world_size=5 --sisa```
+```python split_nn.py --epochs=2 --server_epochs 5 --iterations=2 --world_size=5 --sisa```
 
-```python split_nn.py --epochs=2 --iterations=2 --world_size=5 --sisa --control```
+```python split_nn.py --epochs=2 --server_epochs 5 --iterations=2 --world_size=5 --sisa --control```
 
 ```
 Split Learning Initialization

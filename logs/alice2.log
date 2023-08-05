@@ -1,10 +1,50 @@
-2023-08-03 20:03:08,178: Alice is going insane!
-2023-08-03 20:03:08,200: Local Data Statistics:
-2023-08-03 20:03:08,201: Dataset Size: 28752.00
-2023-08-03 20:03:08,202: Training dataset: {6: 4946, 5: 4742, 1: 2418, 7: 5535, 3: 5691, 2: 2441, 8: 2012, 0: 930, 4: 37}
-2023-08-03 20:03:08,202: Test dataset: {2: 545, 3: 1440, 8: 528, 0: 265, 6: 1295, 7: 1384, 5: 1161, 1: 557, 4: 13}
-2023-08-03 20:03:17,667: Local Training
-2023-08-03 20:03:37,338: Local Training
-2023-08-03 20:03:56,980: Local Training
-2023-08-03 20:04:16,344: Local Training
-2023-08-03 20:04:35,598: Local Training
+2023-08-05 16:26:07,978: Alice is going insane!
+2023-08-05 16:26:07,996: Local Data Statistics:
+2023-08-05 16:26:07,996: Dataset Size: 25855.00
+2023-08-05 16:26:07,997: Training dataset: {1: 6182, 3: 3578, 5: 999, 2: 3299, 9: 2702, 7: 5202, 6: 901, 8: 1931, 4: 1044, 0: 17}
+2023-08-05 16:26:07,997: Test dataset: {9: 690, 3: 900, 6: 212, 1: 1679, 7: 1217, 5: 233, 2: 811, 4: 239, 8: 478, 0: 5}
+2023-08-05 16:26:18,314: Local Training
+2023-08-05 16:26:37,783: Local Training
+2023-08-05 16:26:57,651: Local Training
+2023-08-05 16:27:17,280: Local Training
+2023-08-05 16:27:37,001: Local Training
+2023-08-05 16:42:38,257: Alice-2 Evaluating Data: 0.239
+2023-08-05 16:42:38,258: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 16:42:38,258: Alice-2 Evaluating Remaining labels: 0.268
+2023-08-05 16:57:51,600: Alice-2 Evaluating Data: 0.258
+2023-08-05 16:57:51,600: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 16:57:51,600: Alice-2 Evaluating Remaining labels: 0.289
+2023-08-05 17:13:32,131: Alice-2 Evaluating Data: 0.259
+2023-08-05 17:13:32,131: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 17:13:32,131: Alice-2 Evaluating Remaining labels: 0.29
+2023-08-05 17:29:48,737: Alice-2 Evaluating Data: 0.238
+2023-08-05 17:29:48,737: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 17:29:48,737: Alice-2 Evaluating Remaining labels: 0.267
+2023-08-05 17:46:10,068: Alice-2 Evaluating Data: 0.251
+2023-08-05 17:46:10,068: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 17:46:10,068: Alice-2 Evaluating Remaining labels: 0.281
+2023-08-05 18:02:08,487: Alice-2 Evaluating Data: 0.229
+2023-08-05 18:02:08,488: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 18:02:08,488: Alice-2 Evaluating Remaining labels: 0.257
+2023-08-05 18:16:51,076: Alice-2 Evaluating Data: 0.257
+2023-08-05 18:16:51,076: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 18:16:51,076: Alice-2 Evaluating Remaining labels: 0.288
+2023-08-05 18:31:35,136: Alice-2 Evaluating Data: 0.245
+2023-08-05 18:31:35,136: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 18:31:35,136: Alice-2 Evaluating Remaining labels: 0.275
+2023-08-05 18:46:28,527: Alice-2 Evaluating Data: 0.226
+2023-08-05 18:46:28,528: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 18:46:28,528: Alice-2 Evaluating Remaining labels: 0.253
+2023-08-05 19:01:09,322: Alice-2 Evaluating Data: 0.258
+2023-08-05 19:01:09,323: Alice-2 Evaluating Unlearned label-9: 0.0 
+ correct_unlearned: 0, total_unlearned: 690
+2023-08-05 19:01:09,323: Alice-2 Evaluating Remaining labels: 0.289
