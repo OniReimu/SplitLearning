@@ -14,7 +14,7 @@ def get_alice_and_bob(args):
     if args.vanilla:
         from data_entities_vanilla import alice, bob
     elif args.concat:
-        from todo_data_entities_sisa_concat import alice, bob
+        from data_entities_sisa_concat import alice, bob
     elif args.sisa:
         from data_entities_vanilla_sisa import alice, bob
     else: # Default case
