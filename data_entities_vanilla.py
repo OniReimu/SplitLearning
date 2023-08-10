@@ -16,7 +16,9 @@ from collections import Counter
 from copy import deepcopy
 
 from tqdm import tqdm
-import time
+
+device = torch.device("mps" if torch.backends.mps.is_available() and \
+                      torch.backends.mps.is_built() else "cpu")
 
 class alice(object):
     def __init__(self,server,bob_model_rrefs,rank,args):
@@ -26,7 +28,9 @@ class alice(object):
 
         self.bob = server
 
-        self.model = model1()
+        # self.model = model1()
+        self.model = model1_sisa()
+
 
         self.criterion = nn.CrossEntropyLoss()
 
@@ -36,6 +40,9 @@ class alice(object):
                     lr=args.lr,
                     momentum = 0.9
                 )
+        
+        self.lr = args.lr
+        self.bob_model_rrefs = bob_model_rrefs
 
         # self.dist_optimizer=  DistributedOptimizer(
         #             torch.optim.Adam,
@@ -62,13 +69,6 @@ class alice(object):
                 with dist_autograd.context() as context_id:
 
                     activation_alice = self.model(inputs)
-
-                    # start_time_backward_alice_to_bob = time.time()
-                    # loss, end_time_backward_alice_to_bob = self.bob.rpc_sync().train_and_backward(activation_alice, labels, context_id, start_time_backward_alice_to_bob)
-
-                    # communication_time = end_time_backward_alice_to_bob - start_time_backward_alice_to_bob
-                    # self.logger.info(f"Alice-{self.client_id} Elapsed time: {communication_time} sending resources from Alice to Bob")
-
                     loss = self.bob.rpc_sync().train_and_backward(activation_alice, labels, context_id)
 
 
@@ -87,14 +87,14 @@ class alice(object):
                 images, labels = data
                 # calculate outputs by running images through the network
                 activation_alice = self.model(images)
-                outputs = self.bob.rpc_sync().train(activation_alice)
+                outputs = self.bob.rpc_sync().inference(activation_alice)
                 # the class with the highest energy is what we choose as prediction
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
         self.logger.info(f"Alice-{self.client_id} Evaluating Data: {round(correct / total, 3)}")
-        return correct, total   
+        return correct, total     
 
     def load_data(self,args):
         self.train_dataloader = torch.load(os.path.join(args.datapath ,f"data_worker{self.client_id}_train.pt"))
@@ -121,11 +121,98 @@ class alice(object):
         self.logger.info("Alice is going insane!")
 
 
+    # ------------- Control group function ------------ #
+    def unlearn(self, omit_label):
+        self.logger.info("Retraining")
+
+        # Reset model parameters
+        self.reset_model()
+        # Now we reset the optimizer
+        self.dist_optimizer=  DistributedOptimizer(
+                    torch.optim.SGD,
+                    self.bob_model_rrefs + list(map(lambda x: RRef(x),self.model.parameters())),
+                    lr=self.lr,
+                    momentum = 0.9
+                )
+        # Filter out instances of the omitted label(s) from the training data
+        # Prepare the unlearned dataset, which omits the given label
+        unlearn_data = [(inputs, labels) for batch in self.train_dataloader for inputs, labels in zip(*batch) if labels != omit_label]
+
+        # Convert unlearn_data to a DataLoader
+        self.unlearn_dataloader = torch.utils.data.DataLoader(unlearn_data, batch_size=16)    
+        self.logger.info("Retraining dataset: {}".format(dict(Counter(label.item() for data in self.unlearn_dataloader for label in data[1]))))
+        self.logger.info("Test dataset (retraining): {}".format(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist()))))
+
+        for epoch in tqdm(range(self.epochs), desc="Epochs", ascii=" >="):
+            for i,data in enumerate(tqdm(self.unlearn_dataloader, desc="Batches", ascii=" >=")):
+                inputs,labels = data
+
+                with dist_autograd.context() as context_id:
+
+                    activation_alice = self.model(inputs)
+                    loss = self.bob.rpc_sync().train_and_backward(activation_alice, labels, context_id)
+
+
+                    self.dist_optimizer.step(context_id)
+
+    def eval_breakdown(self, omit_label):
+        correct = 0
+        total = 0
+
+        # These are for tracking the unlearned label
+        correct_unlearned = 0
+        total_unlearned = 0
+
+        # These are for tracking the remaining labels
+        correct_remaining = 0
+        total_remaining = 0
+
+        # since we're not training, we don't need to calculate the gradients for our outputs
+        with torch.no_grad():
+            for data in self.test_dataloader:
+                images, labels = data
+
+                # calculate outputs by running images through the network
+                activation_alice = self.model(images)
+                outputs = self.bob.rpc_sync().inference(activation_alice)
+
+                # the class with the highest energy is what we choose as prediction
+                _, predicted = torch.max(outputs.data, 1)
+
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+                # Now let's break this down for the unlearned and remaining labels
+                is_unlearned = labels == omit_label
+                is_remaining = labels != omit_label
+
+                total_unlearned += is_unlearned.sum().item()
+                total_remaining += is_remaining.sum().item()
+
+                correct_unlearned += (predicted[is_unlearned] == labels[is_unlearned]).sum().item()
+                correct_remaining += (predicted[is_remaining] == labels[is_remaining]).sum().item()
+
+        self.logger.info(f"Alice-{self.client_id} Evaluating Data: {round(correct / total, 3)}")
+        
+        # "0" indicates there is no such a label in the local testing dataset
+        self.logger.info(f"Alice-{self.client_id} Evaluating Unlearned label-{omit_label}: {round(correct_unlearned / total_unlearned if total_unlearned else 0, 3)} \n correct_unlearned: {correct_unlearned}, total_unlearned: {total_unlearned}")
+        self.logger.info(f"Alice-{self.client_id} Evaluating Remaining labels: {round(correct_remaining / total_remaining if total_remaining else 0, 3)}")
+
+        return correct, total, correct_unlearned, total_unlearned, correct_remaining, total_remaining   
+
+    def reset_model(self):
+        for layer in self.model.children():
+            if hasattr(layer, 'reset_parameters'):
+                layer.reset_parameters()
+
+
 
 class bob(object):
     def __init__(self,args):
         self.server = RRef(self)
-        self.model = model2()
+        # self.model = model2()
+        self.model = model2_sisa()
+
         model_rrefs = list(map(lambda x: RRef(x),self.model.parameters()))
 
         self.alices = {rank+1: rpc.remote(f"alice{rank+1}", alice, (self.server,model_rrefs,rank+1,args)) for rank in range(args.client_num_in_total)}
@@ -143,7 +230,7 @@ class bob(object):
         dist_autograd.backward(context_id, [loss])
         return loss
 
-    def train(self,x):
+    def inference(self,x):
         return self.model(x)
     
     def train_request(self,client_id):
@@ -180,3 +267,34 @@ class bob(object):
 
         self.logger.addHandler(fh)
         self.logger.info("Bob Started Getting Tipsy")
+
+    # ------------- Control group function ------------ #
+    def unlearn_request(self, client_id, omit_label):
+        # call the unlearn request from alice
+        self.logger.info(f"Unlearn Request for Alice-{client_id}")
+        self.alices[client_id].rpc_sync(timeout=0).unlearn(omit_label)
+
+    def eval_request_breakdown(self, omit_label):
+        self.logger.info("Initializing Evaluation of all Alices. Breaking down to the unlearned and the remaining data")
+        total = []
+        total_unlearned = []
+        total_remaining = []
+        num_corr = []
+        num_corr_unlearned = []
+        num_corr_remaining = []
+
+        check_eval = [self.alices[client_id].rpc_async(timeout=0).eval_breakdown(omit_label) for client_id in
+                    range(1, self.client_num_in_total + 1)]
+
+        for check in check_eval:
+            corr, tot, corr_unlearned, tot_unlearned, corr_remaining, tot_remaining = check.wait()
+            total.append(tot) # The server now has all the labels collected from all clients
+            total_unlearned.append(tot_unlearned)
+            total_remaining.append(tot_remaining)
+            num_corr.append(corr)
+            num_corr_unlearned.append(corr_unlearned)
+            num_corr_remaining.append(corr_remaining)
+
+        self.logger.info("Accuracy over all data: {:.3f}".format(sum(num_corr) / sum(total)))
+        self.logger.info("Accuracy over unlearned data: {:.3f}".format(sum(num_corr_unlearned) / sum(total_unlearned)))
+        self.logger.info("Accuracy over remaining data: {:.3f}".format(sum(num_corr_remaining) / sum(total_remaining)))

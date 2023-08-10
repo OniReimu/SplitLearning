@@ -17,6 +17,9 @@ from copy import deepcopy
 
 from tqdm import tqdm
 
+device = torch.device("mps" if torch.backends.mps.is_available() and \
+                      torch.backends.mps.is_built() else "cpu")
+
 class alice(object):
     def __init__(self,server,bob_model_rrefs,rank,args):
         self.client_id = rank
@@ -66,7 +69,7 @@ class alice(object):
                 with dist_autograd.context() as context_id:
 
                     activation_alice1 = self.model1(inputs)
-                    activation_bob = self.bob.rpc_sync().train(activation_alice1) #model(activation_alice1)
+                    activation_bob = self.bob.rpc_sync().inference(activation_alice1) #model(activation_alice1)
                     activation_alice2 = self.model2(activation_bob)
 
                     loss = self.criterion(activation_alice2,labels)
@@ -89,7 +92,7 @@ class alice(object):
                 images, labels = data
                 # calculate outputs by running images through the network
                 activation_alice1 = self.model1(images)
-                activation_bob = self.bob.rpc_sync().train(activation_alice1)  # model(activation_alice1)
+                activation_bob = self.bob.rpc_sync().inference(activation_alice1)  # model(activation_alice1)
                 outputs = self.model2(activation_bob)
                 # the class with the highest energy is what we choose as prediction
                 _, predicted = torch.max(outputs.data, 1)
@@ -159,7 +162,7 @@ class bob(object):
 
         self.logger.info("Accuracy over all data: {:.3f}".format(sum(num_corr) / sum(total)))
 
-    def train(self,x):
+    def inference(self,x):
         return self.model(x)
 
     def start_logger(self):

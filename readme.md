@@ -54,12 +54,16 @@ Following the unlearning procedure, Bob's model may exhibit a reduced level of a
 ## Example run:
 ```python split_nn.py --epochs=2 --iterations=2 --world_size=5```
 
-```python split_nn.py --epochs=2 --server_epochs 5 --iterations=2 --world_size=5 --sisa```
+```python split_nn.py --epochs=2 --iterations=2 --world_size=5 --vanilla```
 
-```python split_nn.py --epochs=2 --server_epochs 5 --iterations=2 --world_size=5 --sisa --control```
+```python split_nn.py --epochs=2 --server_epochs 5 --world_size=5 --sisa```
 
+```python split_nn.py --epochs=2 --server_epochs 5 --world_size=5 --sisa --concat```
+
+```python split_nn.py --epochs=2 --server_epochs 5 --iterations=2 --world_size=5 --control```
+
+## Split Learning Initialization
 ```
-Split Learning Initialization
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -76,7 +80,15 @@ optional arguments:
                         Number to describe the uniformity during sampling (heterogenous data generation for LDA)
   --datapath DATAPATH   The folder path to all the local datasets
   --lr LR               Learning rate of local client (SGD)
+
+  --vanilla VANILLA     The trigger to switch over vanilla or U-shape split learning
   --sisa SISA           The trigger to switch over between sisa-based and non-sisa-based
+  --concat CONCAT       The trigger to use a concat layer
   --control CONTROL     The trigger to run for the control group or not
 
 ```
+
+## TODO
+
+- [ ] Discussion about whether we need an aggregation / concatenation
+- [ ] Concat-driven SISA-based framework (Halfway done)

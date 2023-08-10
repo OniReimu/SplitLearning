@@ -61,6 +61,27 @@ class model2_sisa(nn.Module):
         x = self.fc3(x)  # additional layer
 
         return x
+    
+# Define the server's model
+class model2_sisa_concat(nn.Module):
+    def __init__(self, num_clients):
+        super().__init__()
+        self.fc1 = nn.Linear(32*13*13*num_clients, 5000)  # Adjusted input size
+        self.dropout1 = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(5000, 1000)
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc3 = nn.Linear(1000, 100 * num_clients)  # Adjusted output size
+
+    def forward(self, x):
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        x = self.dropout1(x)
+        x = F.relu(self.fc2(x))
+        x = self.dropout2(x)
+        x = self.fc3(x)
+        return x
+
+
 
 
 class model3(nn.Module):

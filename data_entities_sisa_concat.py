@@ -69,8 +69,8 @@ class alice(object):
     def eval(self):
         correct = 0
         total = 0
+        
         # since we're not training, we don't need to calculate the gradients for our outputs
-
         self.bob.rpc_sync().switch_mode_to_eval()
         with torch.no_grad():
             for data in self.test_dataloader:
@@ -107,6 +107,8 @@ class alice(object):
 
                 # calculate outputs by running images through the network
                 activation_alice = self.model(images)
+
+                # TODO: concat
                 outputs = self.bob.rpc_sync().inference(activation_alice)
 
                 # the class with the highest energy is what we choose as prediction
@@ -220,35 +222,11 @@ class alice(object):
             if hasattr(layer, 'reset_parameters'):
                 layer.reset_parameters()
 
-    # ------------- Control group function ------------ #
-    def train_control(self,omit_label):
-        # Filter out instances of the omitted label(s) from the training data
-        # Prepare the filtered dataset, which omits the given label
-        filtered_data = [(inputs, labels) for batch in self.train_dataloader for inputs, labels in zip(*batch) if labels != omit_label]
-
-        # Convert filtered_data to a DataLoader
-        self.unlearn_dataloader = torch.utils.data.DataLoader(filtered_data, batch_size=16)    
-        self.logger.info("Filtered dataset: {}".format(dict(Counter(label.item() for data in self.unlearn_dataloader for label in data[1]))))
-        
-        for epoch in tqdm(range(self.local_epochs), desc="Epochs", ascii=" >="):
-            for i, data in enumerate(tqdm(self.unlearn_dataloader, desc="Batches", ascii=" >=")):
-                inputs,labels = data
-                self.optimizer.zero_grad()
-
-                activation_alice = self.model(inputs)
-                loss = self.criterion(activation_alice,labels)
-
-                # local backward pass
-                loss.backward()
-
-                self.optimizer.step()
-
-
 
 class bob(object):
     def __init__(self,args):
         self.server = RRef(self)
-        self.model = model2_sisa()
+        self.model = model2_sisa_concat(num_clients=args.client_num_in_total)
         self.server_epochs = args.server_epochs
 
         self.client_num_in_total  = args.client_num_in_total
@@ -277,12 +255,21 @@ class bob(object):
 
         self.switch_mode_to_train()
         for epoch in tqdm(range(self.server_epochs), desc="Epochs", ascii=" >="):
-            for client_id in range(1, self.client_num_in_total + 1): 
+
+            intermediate_inputs_list = []
+            labels_list = []
+            for client_id in range(1, self.client_num_in_total + 1):
                 intermediate_inputs, labels = self.get_activation_and_labels(client_id, unlearned=True, unlearn_id=unlearn_id) \
                                                 if client_id in unlearn_request_from_alices else \
                                                 self.get_activation_and_labels(client_id, unlearned=False)
+                # If intermediate_inputs and labels are already tensors or compatible arrays, append them directly
+                intermediate_inputs_list.extend(intermediate_inputs)
+                labels_list.extend(labels)
 
-                for intermediate_input, label in tqdm(zip(intermediate_inputs, labels), total=len(intermediate_inputs), desc="Batches", ascii=True, mininterval=0.1):
+            concatenated_inputs = torch.cat(intermediate_inputs_list, dim=0)
+            concatenated_labels = torch.cat(labels_list, dim=0)
+
+            for intermediate_input, label in tqdm(zip(concatenated_inputs, concatenated_labels), total=len(concatenated_inputs), desc="Batches", ascii=True, mininterval=0.1):
                     self.optimizer.zero_grad()
                     # Detach activation from Alice's computation graph
                     output = self.model(intermediate_input.detach())
@@ -292,6 +279,24 @@ class bob(object):
                     loss.backward()
 
                     self.optimizer.step()
+
+
+
+            # for client_id in range(1, self.client_num_in_total + 1): 
+            #     intermediate_inputs, labels = self.get_activation_and_labels(client_id, unlearned=True, unlearn_id=unlearn_id) \
+            #                                     if client_id in unlearn_request_from_alices else \
+            #                                     self.get_activation_and_labels(client_id, unlearned=False)
+
+            #     for intermediate_input, label in tqdm(zip(intermediate_inputs, labels), total=len(intermediate_inputs), desc="Batches", ascii=True, mininterval=0.1):
+            #         self.optimizer.zero_grad()
+            #         # Detach activation from Alice's computation graph
+            #         output = self.model(intermediate_input.detach())
+            #         loss = self.criterion(output, label)
+
+            #         # global backward pass
+            #         loss.backward()
+
+            #         self.optimizer.step()
 
         self.logger.info("Global training completed.")
 
@@ -365,13 +370,13 @@ class bob(object):
     def unfreeze_alice_weights(self, client_ids):
         for client_id in client_ids:
             self.logger.info("Unfreezing weights for Alices-{}.".format(client_id))
-            self.alices[client_id].rpc_sync().unfreeze_weights()
+            self.alices[client_id].rpc_sync().unfreeze_weights()   
 
     def switch_mode_to_train(self):
         self.model.train()  
 
     def switch_mode_to_eval(self):
-        self.model.eval()         
+        self.model.eval()          
 
     def start_logger(self):
         self.logger = logging.getLogger("bob")
@@ -385,9 +390,3 @@ class bob(object):
 
         self.logger.addHandler(fh)
         self.logger.info("Bob Started Getting Tipsy")
-
-    # ------------- Control group function ------------ #
-    def train_request_control(self, client_id, omit_label):
-        # call the train request from alice
-        self.logger.info(f"Train Request for Alice-{client_id}")
-        self.alices[client_id].rpc_sync(timeout=0).train_control(omit_label)
