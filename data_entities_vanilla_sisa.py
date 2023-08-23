@@ -16,6 +16,8 @@ from tqdm import tqdm
 device = torch.device("mps" if torch.backends.mps.is_available() and \
                       torch.backends.mps.is_built() else "cpu")
 
+device_cpu = torch.device("cpu")
+
 '''
 The way to integrate SISA into the traditional split unlearning is as follows:
 ---
@@ -46,6 +48,7 @@ class alice(object):
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=1e-5)
 
         self.lr = args.lr
+        self.batch_size = args.batch_size
 
         self.load_data(args)
 
@@ -146,10 +149,11 @@ class alice(object):
         unlearn_data = [(inputs, labels) for batch in self.train_dataloader for inputs, labels in zip(*batch) if labels != omit_label]
 
         # Convert unlearn_data to a DataLoader
-        self.unlearn_dataloader = torch.utils.data.DataLoader(unlearn_data, batch_size=16)    
+        self.unlearn_dataloader = torch.utils.data.DataLoader(unlearn_data, batch_size=self.batch_size)    
         self.logger.info("Retraining dataset: {}".format(dict(Counter(label.item() for data in self.unlearn_dataloader for label in data[1]))))
-        self.logger.info("Test dataset (retraining): {}".format(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist()))))
-        
+        self.logger.info("Test dataset (retraining): {}".format(dict(Counter(self.test_dataloader.dataset[:][1].cpu().tolist()))))
+
+
         for epoch in tqdm(range(self.local_epochs), desc="Epochs", ascii=" >="):
             for i, data in enumerate(tqdm(self.unlearn_dataloader, desc="Batches", ascii=" >=")):
                 inputs,labels = data
@@ -169,9 +173,11 @@ class alice(object):
 
         self.n_train = len(self.train_dataloader.dataset)
         self.logger.info("Local Data Statistics:")
-        self.logger.info("Dataset Size: {:.2f}".format(self.n_train))
-        self.logger.info("Training dataset: {}".format(dict(Counter(self.train_dataloader.dataset[:][1].numpy().tolist()))))
-        self.logger.info("Test dataset: {}".format(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist()))))
+        self.logger.info("Dataset Size: {:.2f}".format(self.n_train))        
+        self.logger.info("Training dataset: {}".format(dict(Counter(self.train_dataloader.dataset[:][1].cpu().tolist()))))
+        self.logger.info("Test dataset: {}".format(dict(Counter(self.test_dataloader.dataset[:][1].cpu().tolist()))))
+
+
 
     def start_logger(self):
         self.logger = logging.getLogger(f"alice{self.client_id}")
@@ -227,7 +233,7 @@ class alice(object):
         filtered_data = [(inputs, labels) for batch in self.train_dataloader for inputs, labels in zip(*batch) if labels != omit_label]
 
         # Convert filtered_data to a DataLoader
-        self.unlearn_dataloader = torch.utils.data.DataLoader(filtered_data, batch_size=16)    
+        self.unlearn_dataloader = torch.utils.data.DataLoader(filtered_data, batch_size=self.batch_size)    
         self.logger.info("Filtered dataset: {}".format(dict(Counter(label.item() for data in self.unlearn_dataloader for label in data[1]))))
         
         for epoch in tqdm(range(self.local_epochs), desc="Epochs", ascii=" >="):
@@ -248,7 +254,9 @@ class alice(object):
 class bob(object):
     def __init__(self,args):
         self.server = RRef(self)
+        # self.model = model2_sisa().to(device) # Place to accelerate the process by using non-cpu devices
         self.model = model2_sisa()
+
         self.server_epochs = args.server_epochs
 
         self.client_num_in_total  = args.client_num_in_total
@@ -269,6 +277,17 @@ class bob(object):
         
         # Otherwise, fetch and cache the activation and labels
         activation_and_labels = self.alices[client_id].rpc_sync().give_activation_and_labels(unlearned)
+        
+        # # Place to accelerate the process by using non-cpu devices
+        # # Move to the desired device (mps) before caching
+        # activation_list, labels_list = activation_and_labels
+        # activation_list = [tensor.to(device) for tensor in activation_list]
+        # labels_list = [tensor.to(device) for tensor in labels_list]
+        # self.activation_and_labels_cache[cache_key] = (activation_list, labels_list)
+
+        # return activation_list, labels_list
+
+
         self.activation_and_labels_cache[cache_key] = activation_and_labels
         return activation_and_labels
 
@@ -296,6 +315,7 @@ class bob(object):
         self.logger.info("Global training completed.")
 
     def inference(self,x):
+        # x = x.to(device) # Place to accelerate the process by using non-cpu devices
         return self.model(x)
     
     def train_request(self,client_id):
@@ -340,6 +360,12 @@ class bob(object):
         num_corr = []
         num_corr_unlearned = []
         num_corr_remaining = []
+
+        # # Place to accelerate the process by using non-cpu devices
+        # # Check if omit_label is already a tensor, otherwise create a tensor from it
+        # if not torch.is_tensor(omit_label):
+        #     omit_label = torch.tensor(omit_label)
+        # omit_label = omit_label.to(device_cpu)
 
         check_eval = [self.alices[client_id].rpc_async(timeout=0).eval_breakdown(omit_label) for client_id in
                     range(1, self.client_num_in_total + 1)]

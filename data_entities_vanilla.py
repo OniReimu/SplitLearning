@@ -42,6 +42,7 @@ class alice(object):
                 )
         
         self.lr = args.lr
+        self.batch_size = args.batch_size
         self.bob_model_rrefs = bob_model_rrefs
 
         # self.dist_optimizer=  DistributedOptimizer(
@@ -103,8 +104,8 @@ class alice(object):
         self.n_train = len(self.train_dataloader.dataset)
         self.logger.info("Local Data Statistics:")
         self.logger.info("Dataset Size: {:.2f}".format(self.n_train))
-        self.logger.info("Training dataset: {}".format(dict(Counter(self.train_dataloader.dataset[:][1].numpy().tolist()))))
-        self.logger.info("Test dataset: {}".format(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist()))))
+        self.logger.info("Training dataset: {}".format(dict(Counter(self.train_dataloader.dataset[:][1].cpu().tolist()))))
+        self.logger.info("Test dataset: {}".format(dict(Counter(self.test_dataloader.dataset[:][1].cpu().tolist()))))
 
     def start_logger(self):
         self.logger = logging.getLogger(f"alice{self.client_id}")
@@ -139,9 +140,9 @@ class alice(object):
         unlearn_data = [(inputs, labels) for batch in self.train_dataloader for inputs, labels in zip(*batch) if labels != omit_label]
 
         # Convert unlearn_data to a DataLoader
-        self.unlearn_dataloader = torch.utils.data.DataLoader(unlearn_data, batch_size=16)    
+        self.unlearn_dataloader = torch.utils.data.DataLoader(unlearn_data, batch_size=self.batch_size)    
         self.logger.info("Retraining dataset: {}".format(dict(Counter(label.item() for data in self.unlearn_dataloader for label in data[1]))))
-        self.logger.info("Test dataset (retraining): {}".format(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist()))))
+        self.logger.info("Test dataset (retraining): {}".format(dict(Counter(self.test_dataloader.dataset[:][1].cpu().tolist()))))
 
         for epoch in tqdm(range(self.epochs), desc="Epochs", ascii=" >="):
             for i,data in enumerate(tqdm(self.unlearn_dataloader, desc="Batches", ascii=" >=")):

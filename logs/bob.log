@@ -1,5 +1,5 @@
-2023-08-10 10:22:17,819: Bob Started Getting Tipsy
-2023-08-10 10:22:17,819: Train all Alices in parallel
-2023-08-10 10:22:31,136: Server training starts. Freezing weights for Alices-1.
-2023-08-10 10:22:31,137: Server training starts. Freezing weights for Alices-2.
-2023-08-10 10:22:31,137: Global Training
+2023-08-23 11:57:37,755: Bob Started Getting Tipsy
+2023-08-23 11:57:37,755: Train all Alices in parallel
+2023-08-23 11:57:51,911: Server training starts. Freezing weights for Alices-1.
+2023-08-23 11:57:51,912: Server training starts. Freezing weights for Alices-2.
+2023-08-23 11:57:51,912: Global Training

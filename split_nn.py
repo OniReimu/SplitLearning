@@ -34,7 +34,10 @@ def init_env(args):
 def example(rank,world_size,args):
     _, bob = init_env(args)
     if rank == 0:
-        rpc.init_rpc("bob", rank=rank, world_size=world_size)
+        rpc.init_rpc(
+            "bob", 
+            rank=rank, 
+            world_size=world_size)
 
         BOB = bob(args)
     
@@ -135,7 +138,11 @@ def example(rank,world_size,args):
 
         rpc.shutdown()
     else:
-        rpc.init_rpc(f"alice{rank}", rank=rank, world_size=world_size)
+        rpc.init_rpc(
+            f"alice{rank}", 
+            rank=rank, 
+            world_size=world_size)
+        
         rpc.shutdown()
 
 if __name__ == "__main__":

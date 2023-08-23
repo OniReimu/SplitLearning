@@ -65,6 +65,7 @@ class alice(object):
         for epoch in tqdm(range(self.epochs), desc="Epochs", ascii=" >="):
             for i,data in enumerate(tqdm(self.train_dataloader, desc="Batches", ascii=" >=")):
                 inputs,labels = data
+                # print(f"Batch size for batch-{i}: {inputs.size(0)}")  # Prints the batch size, batch size is 16 by default
 
                 with dist_autograd.context() as context_id:
 
@@ -109,8 +110,8 @@ class alice(object):
         self.n_train = len(self.train_dataloader.dataset)
         self.logger.info("Local Data Statistics:")
         self.logger.info("Dataset Size: {:.2f}".format(self.n_train))
-        self.logger.info("Training dataset: {}".format(dict(Counter(self.train_dataloader.dataset[:][1].numpy().tolist()))))
-        self.logger.info("Test dataset: {}".format(dict(Counter(self.test_dataloader.dataset[:][1].numpy().tolist()))))
+        self.logger.info("Training dataset: {}".format(dict(Counter(self.train_dataloader.dataset[:][1].cpu().tolist()))))
+        self.logger.info("Test dataset: {}".format(dict(Counter(self.test_dataloader.dataset[:][1].cpu().tolist()))))
 
     def start_logger(self):
         self.logger = logging.getLogger(f"alice{self.client_id}")

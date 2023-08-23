@@ -32,9 +32,9 @@ def load_mnist_image(args):
     args.class_num = len(np.unique(label_list))
 
     [_, _, _, _,_, train_data_local_dict, test_data_local_dict, args.class_num] = image_preprocess_dl(args,
-                                                                                                                 data,
-                                                                                                                 label_list,
-                                                                                                                 test_partition=0.2)
+                                                                                                    data,
+                                                                                                    label_list,
+                                                                                                    test_partition=0.2)
     for key in train_data_local_dict.keys():
         torch.save(train_data_local_dict[key], os.path.join(args.datapath,f"data_worker{key+1}_train.pt"))
         print(dict(sorted(dict(Counter(train_data_local_dict[key].dataset[:][1].numpy().tolist())).items())))
